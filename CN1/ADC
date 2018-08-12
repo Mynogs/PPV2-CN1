@@ -1,0 +1,87 @@
+-- 22.04.2018 07:14:56 AR V1.0a
+
+block.setSize(101, 31)
+
+generic = {
+
+  parameter = {
+    channel = 0,
+  },
+
+  pins = {'A17', 'A18', 'A19', 'A20', 'B0', 'B1', 'B2', 'B3', 'A21', 'A22'},
+
+  init = function(self)
+    block.setOutputsPinCount(1)
+    block.modifyFlags('Realtime', true)
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'ADC',
+[[
+Read the analog from an anlaog to digital converter.
+The output value is in the range of 0.0-1.0
+]])
+    local s = ''
+    for i, v in ipairs(generic.pins) do
+      s = s .. 'Channel ' .. (i - 1) .. ' (Pin ' .. v .. ')\n'
+    end
+    gui.add('ComboBox', 'ComboBoxChannel', 'Channel', s, {DropDownCount = #generic.pins})
+    gui.set('ComboBoxChannel', 'ItemIndex', self.parameter.channel)
+    gui.setSize()
+  end,
+
+  apply = function(self)
+    self.parameter.channel = gui.get('ComboBoxChannel', 'ItemIndex')
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    --return block.getDefaultAvatar(0x50, "'WS2812'")
+    return block.getDefaultAvatar{
+      Type = 0x5E,
+      CenterDrawSource = 'draw.setColorA(0.8, 0.8, 0.8) draw.text(0, 0, w, h, "ADC\\n' .. self.parameter.channel .. '", 4)',
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*%d)')
+    if group ~= 'CN1' then
+      return false
+    end
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function()
+          block.adc = require 'adc'
+          block.adc.open()
+          START
+        end
+
+        block.step = function()
+          STEP
+        end
+
+        block.stop = function()
+          block.adc.close()
+        end
+
+        return block
+      ]==]
+    local replaces = {
+      ['NAME'] = self.name,
+      ['START'] = 'block.adc.config(' .. self.parameter.channel .. ', \'UNIPOLAR\')',
+      ['STEP'] = 'block.adc.get(' .. self.parameter.channel .. ')',
+    }
+    return string.gsub(source, '%a+', replaces)
+  end,
+
+}
+

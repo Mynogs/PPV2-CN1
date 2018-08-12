@@ -1,0 +1,81 @@
+-- 22.04.2018 07:14:56 AR V1.0a
+
+block.setSize(101, 31)
+
+generic = {
+
+  parameter = {
+    pin = 0,
+  },
+
+  pins = {'A0', 'A1', 'A2', 'A3', 'A4', 'A7', 'A8', 'A9', 'A10', 'A15', 'A16', 'A17', 'A18', 'A19', 'A20', 'A21', 'A22', 'A23', 'A24', 'B0', 'B1', 'B2', 'B3', 'B10', 'B11', 'B12'},
+
+  init = function(self)
+    block.setInputsPinCount(1)
+    block.setInputPinTypeRestrains(1, 'table')
+    block.modifyFlags('Realtime', true)
+    block.modifyFlags('SupressStopFunctionCall', true)
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'WS2812 single LED',
+[[
+Send RGB value to a single WS2812 LED.
+Input is a tabel with the three colors in the range of 0.0-1.0:
+{r, g, b}
+]])
+    gui.add('ComboBox', 'ComboBoxPin', 'Pin', table.concat(generic.pins, '\n'), {DropDownCount = 20})
+    gui.set('ComboBoxPin', 'ItemIndex', self.parameter.pin)
+    gui.setSize()
+  end,
+
+  apply = function(self)
+    self.parameter.pin = gui.get('ComboBoxPin', 'ItemIndex')
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    --return block.getDefaultAvatar(0x50, "'WS2812'")
+    return block.getDefaultAvatar{
+      Type = 0x5E,
+      CenterDrawSource = 'draw.setColorA(0.8, 0.8, 0.8) draw.text(0, 0, w, h, "WS2812\\n' .. generic.pins[self.parameter.pin + 1] .. '", 4)',
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return nil
+    end
+    local _, _, group = remote:find('(%w*%d)')
+    if group ~= 'CN1' then
+      return false
+    end
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function(hsv)
+          START
+          block.ws2812 = require('ws2812')
+        end
+
+        block.step = function(a)
+          STEP
+        end
+
+        return block
+      ]==]
+    local replaces = {
+      ['NAME'] = self.name,
+      ['START'] = 'pin.config(\'' .. generic.pins[self.parameter.pin + 1] .. '\', \'LOW\')',
+      ['STEP'] = 'block.ws2812.send(\'' .. generic.pins[self.parameter.pin + 1] .. '\', {a})',
+    }
+    return string.gsub(source, '%a+', replaces)
+  end,
+
+}
+
