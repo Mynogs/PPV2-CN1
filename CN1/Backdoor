@@ -1,6 +1,7 @@
 -- 22.04.2018 06:55:39 AR V1.0a
+-- 14.08.2018 06:32:00 AR V1.0b More info
 
-block.setSize(51, 51)
+block.setSize(31, 31)
 
 generic = {
   parameter = {
@@ -11,10 +12,18 @@ generic = {
   end,
 
   open = function(self)
-    gui.add('Info', 'Info', 'Backdoor', [[
-Open a backdoor for commands like 'reboot'
-]])
-    gui.setSize()
+    gui.add('HTMLInfo', 'Info', 'Backdoor', [[
+Open a backdoor for commands like 'reboot'<br><br>
+Receiving Lua source code on UDP port 11111.<br>
+This code will be executed immediately.<br><br>
+The answer is short JSON string:<br>
+<ul>
+<li>["success"]<ind x = "160">Success, no result<br>
+<li>[{"success":"<i>result</i>"}]<ind x = "160">Success, result as string<br>
+<li>[{"error":"'<i>error</i>"}]<ind x = "160">Error, error text as string<br>
+</ul>
+]], {Height = 180})
+    gui.setSize(300)
   end,
 
   apply = function(self)
@@ -27,7 +36,14 @@ Open a backdoor for commands like 'reboot'
     return block.getDefaultAvatar(0x50, "'\\xEE\\x82\\xA2'")
   end,
 
-  generate = function(self)
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*%d)')
+    if group ~= 'CN1' then
+      return false
+    end
     local source =
       [==[
         local block = {}
@@ -43,9 +59,9 @@ Open a backdoor for commands like 'reboot'
               if success then
                 print('Success', result)
                 if result then
-                  return '[{"Success":"' .. string.gsub(result, '"', '\\"')..'"}]'
+                  return '[{"success":"' .. string.gsub(result, '"', '\\"')..'"}]'
                 end
-                return '["Success"]'
+                return '["success"]'
               end
               print('Error during pcall', result)
               return '[{"error":"' .. string.gsub(result,'%"',' ') .. '"}]'
